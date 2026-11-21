@@ -1,0 +1,8 @@
+{
+  "name": "CAREX",
+  "description": "CAREX (CRX) — Powering the Next Generation. Institutional Web3 corporate platform, client portal, and administrative governance workspace.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

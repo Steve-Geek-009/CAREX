@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Outfit", system-ui, -apple-system, sans-serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-carex-bg: #040814;
+  --color-carex-surface: #081124;
+  --color-carex-elevated: #0d1933;
+  --color-carex-border: #162544;
+  --color-carex-electric: #2563eb;
+  --color-carex-electric-hover: #3b82f6;
+  --color-carex-cyan: #22d3ee;
+  --color-carex-silver: #cbd5e1;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-carex-bg);
+    color: #f1f5f9;
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-carex-bg);
+    color: #f1f5f9;
+    letter-spacing: 0.008em;
+    overflow-x: clip;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid #38bdf8;
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.carex-orbital-grid {
+  background-image:
+    radial-gradient(circle at 80% 10%, rgba(37, 99, 235, 0.14), transparent 48%),
+    radial-gradient(circle at 15% 85%, rgba(6, 182, 212, 0.07), transparent 42%);
+}
+
+.carex-hairline-grid {
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.045) 1px, transparent 1px);
+  background-size: 72px 72px;
+}
