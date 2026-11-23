@@ -6,9 +6,10 @@ export const users = pgTable('users', {
   uid: text('uid').notNull().unique(),
   email: text('email').notNull(),
   displayName: text('display_name').notNull(),
+  photoUrl: text('photo_url'),
   jurisdiction: text('jurisdiction').notNull().default('Not Specified'),
-  role: text('role').notNull().default('client'),
-  accountStatus: text('account_status').notNull().default('Active'),
+  role: text('role').notNull().default('CLIENT'),
+  accountStatus: text('account_status').notNull().default('ACTIVE'),
   kycStatus: text('kyc_status').notNull().default('Not Submitted'),
   walletStatus: text('wallet_status').notNull().default('Unlinked'),
   walletAddress: text('wallet_address'),
@@ -16,6 +17,7 @@ export const users = pgTable('users', {
   notifyKyc: boolean('notify_kyc').notNull().default(true),
   notifyPlatform: boolean('notify_platform').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  lastLoginAt: timestamp('last_login_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 

@@ -1,37 +1,33 @@
-import React, { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import React from 'react';
+import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { AppLink } from '../../components/AppLink';
 import { CarexLogo } from '../../components/CarexLogo';
-import { StageNotice } from '../../components/UiPrimitives';
+import { StatusIndicator } from '../../components/StatusIndicator';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from '../../context/RouterContext';
-import { validateLoginForm, type LoginFormValues, type ValidationErrors } from '../../utils/validation';
+import { getAccountStatusLabel, getRoleLabel } from '../../utils/rbac';
 
 export function LoginPage() {
-  const { signInWithGoogle, authBusy, authError, account } = useAuth();
+  const {
+    account,
+    authReady,
+    authBusy,
+    authError,
+    restrictedReason,
+    signInWithGoogle,
+    signOutUser,
+  } = useAuth();
   const { navigate } = useRouter();
-  const [values, setValues] = useState<LoginFormValues>({ email: '', password: '' });
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberSession, setRememberSession] = useState(false);
-  const [errors, setErrors] = useState<ValidationErrors<LoginFormValues>>({});
-  const [submittedPreview, setSubmittedPreview] = useState(false);
 
   const handleGoogleSignIn = async () => {
-    const ok = await signInWithGoogle();
-    if (ok) {
+    const result = await signInWithGoogle();
+    if (result.ok) {
       navigate('/client');
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const validation = validateLoginForm(values);
-    setErrors(validation);
-    if (Object.keys(validation).length > 0) {
-      setSubmittedPreview(false);
-      return;
-    }
-    setSubmittedPreview(true);
+  const handleSignOut = async () => {
+    await signOutUser();
   };
 
   return (
@@ -45,183 +41,177 @@ export function LoginPage() {
               Sign In to CAREX
             </h1>
             <p className="text-sm leading-relaxed text-slate-300 sm:text-base">
-              Access your CAREX Client Portal to manage your account profile, review KYC
-              verification status, and oversee non-custodial wallet bindings.
+              Authenticate with your verified Google account to access your CAREX Client Portal,
+              manage your profile and preferences, and monitor your account activity.
             </p>
           </div>
 
           <div className="space-y-4 border-t border-slate-800/80 pt-6">
-            <p className="text-xs font-medium text-sky-400">Portal Access</p>
+            <p className="text-xs font-medium text-sky-400">Authentication Security</p>
             <p className="text-sm leading-relaxed text-slate-400">
-              Sign in with Google to persist your account profile and preferences, or inspect the
-              Client Portal and Admin Console layouts directly.
+              CAREX Draft 1 uses Google Sign-In exclusively through Firebase Authentication with
+              server-side token verification. First-time sign-in automatically creates your CAREX
+              client record.
             </p>
-            <div className="flex flex-wrap gap-4 pt-1 text-sm">
-              <AppLink to="/client" className="font-medium text-sky-300 hover:text-white">
-                Open Client Portal
-              </AppLink>
-              <span aria-hidden="true" className="text-slate-700">/</span>
-              <AppLink to="/admin" className="font-medium text-slate-300 hover:text-white">
-                Open Admin Console
-              </AppLink>
-            </div>
+            <p className="text-xs text-slate-500">
+              CAREX never stores Google passwords and never requests wallet private keys or seed
+              phrases.
+            </p>
           </div>
         </div>
 
-        {/* Right Login Form */}
+        {/* Right Google Authentication Panel */}
         <div className="lg:col-span-7">
           <div className="rounded-xl border border-slate-800/90 bg-[#081124] p-7 sm:p-9">
-            {account && (
-              <div className="mb-6">
-                <StageNotice
-                  title={`Signed in as ${account.displayName}`}
-                  description={`Authenticated session active for ${account.email}.`}
-                  actionLabel="Continue to Client Portal"
-                  actionTo="/client"
-                />
-              </div>
-            )}
-
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={authBusy}
-                className="flex w-full items-center justify-center gap-3 rounded-lg border border-cyan-400/40 bg-blue-600/20 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:border-cyan-300/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    fill="#EA4335"
-                    d="M12 10.2v3.9h5.4c-.2 1.2-1.4 3.6-5.4 3.6-3.2 0-5.9-2.7-5.9-6s2.7-6 5.9-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.1 14.6 2.2 12 2.2 6.6 2.2 2.2 6.6 2.2 12s4.4 9.8 9.8 9.8c5.7 0 9.4-4 9.4-9.6 0-.6-.1-1.1-.2-1.6H12z"
-                  />
-                </svg>
-                <span>{authBusy ? 'Signing in...' : 'Continue with Google'}</span>
-              </button>
-              {authError && (
-                <p role="alert" className="text-xs text-rose-400">
-                  {authError}
+            {!authReady ? (
+              <div className="space-y-4 py-6" role="status" aria-live="polite">
+                <p className="text-sm font-medium text-slate-200">
+                  Verifying authentication session...
                 </p>
-              )}
-            </div>
-
-            <div className="my-6 flex items-center gap-3 text-xs text-slate-500">
-              <span className="h-px flex-1 bg-slate-800" />
-              <span>or review email login layout</span>
-              <span className="h-px flex-1 bg-slate-800" />
-            </div>
-
-            <form onSubmit={handleSubmit} noValidate className="space-y-6">
-              <div>
-                <label htmlFor="login-email" className="block text-sm font-medium text-slate-200">
-                  Email address
-                </label>
-                <input
-                  id="login-email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={values.email}
-                  onChange={(e) => {
-                    setValues((prev) => ({ ...prev, email: e.target.value }));
-                    if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
-                  }}
-                  aria-invalid={Boolean(errors.email)}
-                  aria-describedby={errors.email ? 'login-email-error' : undefined}
-                  placeholder="name@organization.com"
-                  className="mt-2 w-full rounded-lg border border-slate-700/90 bg-[#050b19] px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
-                />
-                {errors.email && (
-                  <p id="login-email-error" role="alert" className="mt-1.5 text-xs text-rose-400">
-                    {errors.email}
-                  </p>
-                )}
+                <div className="h-11 w-full animate-pulse rounded-lg bg-slate-800/70" />
               </div>
-
-              <div>
-                <div className="flex items-center justify-between">
-                  <label
-                    htmlFor="login-password"
-                    className="block text-sm font-medium text-slate-200"
-                  >
-                    Password
-                  </label>
-                  <span className="text-xs text-slate-500">
-                    Google Sign-In is active above
+            ) : restrictedReason ? (
+              <div className="space-y-5">
+                <div className="flex items-center gap-2.5 text-rose-400">
+                  <ShieldAlert className="h-5 w-5 shrink-0" />
+                  <span className="text-xs font-semibold tracking-wider uppercase">
+                    Account Restricted
                   </span>
                 </div>
-                <div className="relative mt-2">
-                  <input
-                    id="login-password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    value={values.password}
-                    onChange={(e) => {
-                      setValues((prev) => ({ ...prev, password: e.target.value }));
-                      if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
-                    }}
-                    aria-invalid={Boolean(errors.password)}
-                    aria-describedby={errors.password ? 'login-password-error' : undefined}
-                    placeholder="Enter your password"
-                    className="w-full rounded-lg border border-slate-700/90 bg-[#050b19] py-2.5 pl-4 pr-11 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
-                  />
+                <h2 className="font-display text-xl font-semibold text-white">
+                  Portal Access Denied
+                </h2>
+                <p className="text-sm leading-relaxed text-slate-300">{restrictedReason}</p>
+                <div className="flex flex-wrap items-center gap-3 border-t border-slate-800/80 pt-5">
                   <button
                     type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded text-slate-400 hover:text-white"
+                    onClick={handleSignOut}
+                    disabled={authBusy}
+                    className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:border-slate-600 hover:text-white disabled:opacity-60"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {authBusy ? 'Signing out...' : 'Sign Out'}
                   </button>
                 </div>
-                {errors.password && (
-                  <p
-                    id="login-password-error"
-                    role="alert"
-                    className="mt-1.5 text-xs text-rose-400"
+              </div>
+            ) : account ? (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2.5 text-cyan-300">
+                  <ShieldCheck className="h-5 w-5 shrink-0" />
+                  <span className="text-xs font-semibold tracking-wider uppercase">
+                    Authenticated Session Active
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-4 border-y border-slate-800/80 py-5">
+                  {account.photoUrl ? (
+                    <img
+                      src={account.photoUrl}
+                      alt={`${account.displayName} profile`}
+                      referrerPolicy="no-referrer"
+                      className="h-12 w-12 rounded-full border border-slate-700 object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-[#050b19] font-display text-base font-semibold text-sky-300">
+                      {account.displayName.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-base font-semibold text-white">
+                      {account.displayName}
+                    </p>
+                    <p className="truncate text-sm text-slate-400">{account.email}</p>
+                  </div>
+                  <StatusIndicator status={getAccountStatusLabel(account.accountStatus)} />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+                  <span>Role: {getRoleLabel(account.role)}</span>
+                  <span aria-hidden="true">·</span>
+                  <span className="font-mono tabular-nums">
+                    ID: CRX-{String(account.id).padStart(6, '0')}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <AppLink
+                    to="/client"
+                    className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500 whitespace-nowrap"
                   >
-                    {errors.password}
+                    Open Client Portal
+                  </AppLink>
+                  {account.role === 'ADMIN' && account.accountStatus === 'ACTIVE' && (
+                    <AppLink
+                      to="/admin"
+                      className="rounded-lg border border-cyan-400/40 bg-cyan-500/10 px-5 py-2.5 text-sm font-semibold text-cyan-200 transition-colors hover:border-cyan-300/60 hover:text-white whitespace-nowrap"
+                    >
+                      Open Admin Console
+                    </AppLink>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    disabled={authBusy}
+                    className="rounded-lg border border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-200 transition-colors hover:border-slate-600 hover:text-white disabled:opacity-60 whitespace-nowrap"
+                  >
+                    {authBusy ? 'Signing out...' : 'Sign Out'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h2 className="font-display text-xl font-semibold text-white">
+                    Google Account Sign-In
+                  </h2>
+                  <p className="text-sm text-slate-400">
+                    Use your Google account to sign in or automatically register a new CAREX
+                    account.
                   </p>
-                )}
-              </div>
+                </div>
 
-              <div className="flex items-center justify-between">
-                <label className="inline-flex cursor-pointer items-center gap-2.5 text-sm text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={rememberSession}
-                    onChange={(e) => setRememberSession(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-700 bg-[#050b19] text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>Keep session active on this device</span>
-                </label>
-              </div>
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignIn}
+                    disabled={authBusy}
+                    className="flex w-full items-center justify-center gap-3 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        fill="#FFFFFF"
+                        d="M12 10.2v3.9h5.4c-.2 1.2-1.4 3.6-5.4 3.6-3.2 0-5.9-2.7-5.9-6s2.7-6 5.9-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.1 14.6 2.2 12 2.2 6.6 2.2 2.2 6.6 2.2 12s4.4 9.8 9.8 9.8c5.7 0 9.4-4 9.4-9.6 0-.6-.1-1.1-.2-1.6H12z"
+                      />
+                    </svg>
+                    <span>{authBusy ? 'Authenticating with Google...' : 'Continue with Google'}</span>
+                  </button>
 
-              <button
-                type="submit"
-                className="w-full rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
-              >
-                Sign In
-              </button>
-            </form>
+                  {authError && (
+                    <div
+                      role="alert"
+                      className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-xs text-rose-300"
+                    >
+                      {authError}
+                    </div>
+                  )}
+                </div>
 
-            {submittedPreview && (
-              <div className="mt-6">
-                <StageNotice
-                  title="Stage 1 Validation Passed — Use Google Sign-In for Live Session"
-                  description={`Input validation succeeded for ${values.email.trim()}. Live authentication currently uses Google Sign-In above; email/password sign-in requires enabling the Email/Password provider in Firebase Console.`}
-                  actionLabel="Open Client Portal Preview"
-                  actionTo="/client"
-                />
+                <div className="space-y-2 border-t border-slate-800/80 pt-5 text-xs text-slate-400">
+                  <p className="font-medium text-slate-300">What happens next</p>
+                  <p className="leading-relaxed">
+                    Your Google identity token is verified server-side by CAREX. New accounts are
+                    provisioned with the standard Client role, while returning users resume their
+                    saved profile and activity history.
+                  </p>
+                </div>
+
+                <p className="border-t border-slate-800/80 pt-5 text-sm text-slate-400">
+                  First time using CAREX?{' '}
+                  <AppLink to="/register" className="font-medium text-sky-300 hover:text-white">
+                    Review onboarding &amp; create account
+                  </AppLink>
+                </p>
               </div>
             )}
-
-            <p className="mt-6 border-t border-slate-800/80 pt-5 text-sm text-slate-400">
-              Need a CAREX account?{' '}
-              <AppLink to="/register" className="font-medium text-sky-300 hover:text-white">
-                Create an account
-              </AppLink>
-            </p>
           </div>
         </div>
       </div>

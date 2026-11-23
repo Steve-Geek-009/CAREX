@@ -39,7 +39,7 @@ const DANGER_STATUSES = new Set([
 ]);
 
 export function resolveStatusVariant(status: string): StatusVariant {
-  const normalized = status.trim().toLowerCase();
+  const normalized = status.trim().toLowerCase().replace(/_/g, ' ');
   if (CYAN_STATUSES.has(normalized)) {
     return 'cyan';
   }

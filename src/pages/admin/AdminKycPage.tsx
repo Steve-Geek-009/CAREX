@@ -6,12 +6,14 @@ import {
   SegmentedTabs,
   StageNotice,
 } from '../../components/UiPrimitives';
-import { usePreviewState } from '../../context/PreviewRoleContext';
-import type { AdminKycPlaceholder } from '../../data/stage1Placeholders';
+import {
+  INITIAL_ADMIN_KYC,
+  type AdminKycPlaceholder,
+} from '../../data/stage1Placeholders';
 import { filterRecords } from '../../utils/validation';
 
 export function AdminKycPage() {
-  const { adminKycQueue } = usePreviewState();
+  const adminKycQueue = INITIAL_ADMIN_KYC;
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedAppId, setSelectedAppId] = useState<string>(

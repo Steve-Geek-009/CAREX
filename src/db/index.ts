@@ -6,6 +6,15 @@ declare global {
   var _postgresPool: Pool | undefined;
 }
 
+export function isDatabaseConfigured(): boolean {
+  return Boolean(
+    process.env.SQL_HOST?.trim() &&
+      process.env.SQL_USER?.trim() &&
+      process.env.SQL_PASSWORD?.trim() &&
+      process.env.SQL_DB_NAME?.trim()
+  );
+}
+
 export const createPool = () => {
   if (!global._postgresPool) {
     global._postgresPool = new Pool({
@@ -18,7 +27,7 @@ export const createPool = () => {
     });
 
     global._postgresPool.on('error', (err) => {
-      console.error('Unexpected error on idle SQL pool client:', err);
+      console.error('Unexpected error on idle SQL pool client:', err.message);
     });
   }
   return global._postgresPool;

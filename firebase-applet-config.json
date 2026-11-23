@@ -3,6 +3,7 @@
   "appId": "1:1000208571729:web:817cffeb456b14a470c770",
   "apiKey": "AIzaSyDLChF4gxYF07pEb8MCzpGMJBOmkfucQig",
   "authDomain": "protean-welder-3zp2g.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-carex-70577c94-6c19-4f7d-b975-eb1b08fb4881",
   "storageBucket": "protean-welder-3zp2g.firebasestorage.app",
   "messagingSenderId": "1000208571729",
   "measurementId": "",

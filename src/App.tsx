@@ -1,7 +1,6 @@
 import React from 'react';
 import { PublicLayout } from './components/PublicLayout';
 import { AuthProvider } from './context/AuthContext';
-import { PreviewStateProvider } from './context/PreviewRoleContext';
 import { RouterProvider, useRouter } from './context/RouterContext';
 import { AdminAccountsPage } from './pages/admin/AdminAccountsPage';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
@@ -142,9 +141,7 @@ export default function App() {
     <PlatformErrorBoundary>
       <AuthProvider>
         <RouterProvider>
-          <PreviewStateProvider>
-            <PlatformRouterView />
-          </PreviewStateProvider>
+          <PlatformRouterView />
         </RouterProvider>
       </AuthProvider>
     </PlatformErrorBoundary>

@@ -1,42 +1,37 @@
 import React from 'react';
 import { AppLink } from '../../components/AppLink';
 import { StatusIndicator } from '../../components/StatusIndicator';
-import {
-  EmptyStatePanel,
-  KeyValueRow,
-  StageNotice,
-} from '../../components/UiPrimitives';
+import { EmptyStatePanel, KeyValueRow } from '../../components/UiPrimitives';
 import { useAuth } from '../../context/AuthContext';
-import { usePreviewState } from '../../context/PreviewRoleContext';
-import { CLIENT_STAGE1_NOTIFICATIONS } from '../../data/stage1Placeholders';
+import { CLIENT_PLATFORM_NOTIFICATIONS } from '../../data/stage1Placeholders';
+import { getAccountStatusLabel, getRoleLabel } from '../../utils/rbac';
+
+function formatUtcTimestamp(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+}
 
 export function ClientDashboardPage() {
   const { account, userLogs } = useAuth();
-  const { clientProfile } = usePreviewState();
+  if (!account) return null;
 
-  const activeName = account?.displayName ?? clientProfile.displayName;
-  const activeEmail = account?.email ?? clientProfile.contactEmail;
-  const activeJurisdiction = account?.jurisdiction ?? clientProfile.jurisdiction;
-  const activeAccountId = account
-    ? `CRX-${String(account.id).padStart(6, '0')}`
-    : clientProfile.accountId;
-  const activeAccountStatus = account?.accountStatus ?? clientProfile.accountStatus;
-  const activeKycStatus = account?.kycStatus ?? clientProfile.kycStatus;
-  const activeWalletStatus = account?.walletAddress ? 'Connected' : 'No Wallet Connected';
-  const activeWalletAddress = account?.walletAddress ?? clientProfile.walletAddress;
+  const activeAccountId = `CRX-${String(account.id).padStart(6, '0')}`;
+  const statusLabel = getAccountStatusLabel(account.accountStatus);
+  const activeWalletStatus = account.walletAddress ? 'Connected' : 'No Wallet Connected';
 
   const verificationRows = [
     {
       module: 'Account Authentication',
-      channel: account ? 'Google Sign-In' : 'Preview Layout',
-      status: account ? 'Verified' : 'Pending',
+      channel: 'Google Sign-In (Firebase Auth)',
+      status: 'Verified',
       actionTo: '/client/settings',
       actionLabel: 'Settings',
     },
     {
       module: 'KYC Identity Verification',
       channel: 'Authorized KYC Provider (Scheduled)',
-      status: activeKycStatus,
+      status: account.kycStatus,
       actionTo: '/client/kyc',
       actionLabel: 'Review KYC',
     },
@@ -50,7 +45,7 @@ export function ClientDashboardPage() {
     {
       module: 'Web3 Wallet Ownership',
       channel: 'Cryptographic Signature Only',
-      status: activeWalletAddress ? 'Verified' : 'Unlinked',
+      status: account.walletAddress ? 'Verified' : 'Unlinked',
       actionTo: '/client/wallet',
       actionLabel: 'Wallet',
     },
@@ -63,36 +58,29 @@ export function ClientDashboardPage() {
           Client Dashboard
         </h1>
         <p className="text-sm text-slate-400">
-          Overview of your account profile, verification status, connected wallet, recent activity,
-          and platform notices.
+          Overview of your verified CAREX account profile, verification status, connected wallet,
+          recent activity, and platform notices.
         </p>
       </div>
-
-      {!account && (
-        <StageNotice
-          title="Stage 1 Client Dashboard Layout — Placeholder Account Context"
-          description="Sign in with Google to save profile and settings changes to your account. CAREX does not display fabricated cryptocurrency balances or simulated transactions."
-          actionLabel="Sign In with Google"
-          actionTo="/login"
-        />
-      )}
 
       {/* Key Status Summary Strip */}
       <section aria-label="Account status overview" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-xl border border-slate-800/90 bg-[#081124] p-5">
           <p className="text-xs text-slate-400">Account Status</p>
           <div className="mt-2.5">
-            <StatusIndicator status={activeAccountStatus} size="md" />
+            <StatusIndicator status={statusLabel} size="md" />
           </div>
           <p className="mt-2 text-xs text-slate-500">
-            {account ? 'Verified session active' : 'Sign in to activate persistent profile'}
+            {account.accountStatus === 'UNDER_REVIEW'
+              ? 'Read-only access during review'
+              : 'Verified Google session active'}
           </p>
         </div>
 
         <div className="rounded-xl border border-slate-800/90 bg-[#081124] p-5">
           <p className="text-xs text-slate-400">KYC Verification Status</p>
           <div className="mt-2.5">
-            <StatusIndicator status={activeKycStatus} size="md" />
+            <StatusIndicator status={account.kycStatus} size="md" />
           </div>
           <AppLink
             to="/client/kyc"
@@ -118,13 +106,13 @@ export function ClientDashboardPage() {
         <div className="rounded-xl border border-slate-800/90 bg-[#081124] p-5">
           <p className="text-xs text-slate-400">Wallet Address</p>
           <p className="mt-2.5 font-mono text-sm tabular-nums text-slate-300">
-            {activeWalletAddress ?? 'Not Linked'}
+            {account.walletAddress ?? 'Not Linked'}
           </p>
           <p className="mt-2 text-xs text-slate-500">Cryptographic signature required</p>
         </div>
       </section>
 
-      {/* Client Verification & Readiness Table with shared StatusIndicator */}
+      {/* Client Verification & Readiness Table */}
       <section className="rounded-xl border border-slate-800/90 bg-[#081124] p-6">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -180,24 +168,23 @@ export function ClientDashboardPage() {
               to="/client/profile"
               className="text-xs font-medium text-sky-400 hover:text-sky-300"
             >
-              Edit Profile
+              {account.accountStatus === 'UNDER_REVIEW' ? 'View Profile' : 'Edit Profile'}
             </AppLink>
           </div>
           <div className="mt-4">
-            <KeyValueRow
-              label={account ? 'Display Name' : 'Display Name (Placeholder)'}
-              value={activeName}
-            />
-            <KeyValueRow label="Contact Email" value={activeEmail} />
+            <KeyValueRow label="Display Name" value={account.displayName} />
+            <KeyValueRow label="Verified Email" value={account.email} />
             <KeyValueRow label="Account Identifier" value={activeAccountId} mono />
-            <KeyValueRow label="Jurisdiction" value={activeJurisdiction} />
+            <KeyValueRow label="Assigned Role" value={getRoleLabel(account.role)} />
+            <KeyValueRow label="Jurisdiction" value={account.jurisdiction} />
+            <KeyValueRow label="Last Sign-In" value={formatUtcTimestamp(account.lastLoginAt)} mono />
           </div>
         </section>
 
         <section className="rounded-xl border border-slate-800/90 bg-[#081124] p-6 lg:col-span-6">
           <h2 className="font-display text-lg font-semibold text-white">Notifications</h2>
           <ul className="mt-4 divide-y divide-slate-800/80">
-            {CLIENT_STAGE1_NOTIFICATIONS.map((item) => (
+            {CLIENT_PLATFORM_NOTIFICATIONS.map((item) => (
               <li key={item.id} className="py-3.5 first:pt-0 last:pb-0">
                 <div className="flex items-center justify-between gap-2 text-xs text-slate-400">
                   <span className="font-medium text-sky-400">{item.category}</span>
@@ -226,7 +213,7 @@ export function ClientDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/70">
-                  {userLogs.slice(0, 5).map((entry) => (
+                  {userLogs.slice(0, 6).map((entry) => (
                     <tr key={entry.id}>
                       <td className="py-2.5 pr-3 font-mono tabular-nums text-slate-400">
                         {entry.eventCode}
@@ -243,8 +230,8 @@ export function ClientDashboardPage() {
           ) : (
             <EmptyStatePanel
               title="No Recorded Account Activity"
-              description="Security sign-ins, profile updates, and verification milestones will appear here once you sign in with your CAREX account."
-              metaNote="Empty state · Sign in to record account activity"
+              description="Security sign-ins, profile updates, and verification milestones appear here automatically."
+              metaNote="Synced from your verified CAREX account"
               actionLabel="View Account Settings"
               actionTo="/client/settings"
             />

@@ -1,21 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { StatusIndicator } from '../../components/StatusIndicator';
-import { KeyValueRow, StageNotice } from '../../components/UiPrimitives';
+import { KeyValueRow } from '../../components/UiPrimitives';
 import { useAuth } from '../../context/AuthContext';
-import { usePreviewState } from '../../context/PreviewRoleContext';
+import { getAccountStatusLabel, getRoleLabel } from '../../utils/rbac';
 import {
   validateProfileForm,
   type ProfileFormValues,
   type ValidationErrors,
 } from '../../utils/validation';
 
+function formatUtcTimestamp(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+}
+
 export function ClientProfilePage() {
   const { account, saveProfileToServer } = useAuth();
-  const { clientProfile, updateClientProfile } = usePreviewState();
   const [form, setForm] = useState<ProfileFormValues>({
-    displayName: account?.displayName ?? clientProfile.displayName,
-    contactEmail: account?.email ?? clientProfile.contactEmail,
-    jurisdiction: account?.jurisdiction ?? clientProfile.jurisdiction,
+    displayName: account?.displayName ?? '',
+    contactEmail: account?.email ?? '',
+    jurisdiction: account?.jurisdiction ?? '',
   });
   const [errors, setErrors] = useState<ValidationErrors<ProfileFormValues>>({});
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
@@ -32,8 +37,17 @@ export function ClientProfilePage() {
     }
   }, [account]);
 
+  if (!account) return null;
+
+  const isReadOnly = account.accountStatus !== 'ACTIVE';
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) {
+      setSaveError('Profile modifications are disabled while your account is under review.');
+      return;
+    }
+
     const validation = validateProfileForm(form);
     setErrors(validation);
     if (Object.keys(validation).length > 0) {
@@ -42,28 +56,18 @@ export function ClientProfilePage() {
     }
 
     setSaveError(null);
-    if (account) {
-      setSaving(true);
-      try {
-        await saveProfileToServer({
-          displayName: form.displayName.trim(),
-          jurisdiction: form.jurisdiction.trim(),
-        });
-        setSavedNotice('Account profile saved.');
-      } catch (err) {
-        setSaveError(err instanceof Error ? err.message : 'Unable to save profile.');
-      } finally {
-        setSaving(false);
-      }
-      return;
+    setSaving(true);
+    try {
+      await saveProfileToServer({
+        displayName: form.displayName.trim(),
+        jurisdiction: form.jurisdiction.trim(),
+      });
+      setSavedNotice('Account profile saved.');
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Unable to save profile.');
+    } finally {
+      setSaving(false);
     }
-
-    updateClientProfile({
-      displayName: form.displayName.trim(),
-      contactEmail: form.contactEmail.trim(),
-      jurisdiction: form.jurisdiction.trim(),
-    });
-    setSavedNotice('Preview profile updated locally.');
   };
 
   return (
@@ -73,22 +77,33 @@ export function ClientProfilePage() {
           User Profile
         </h1>
         <p className="text-sm text-slate-400">
-          Review and update your CAREX account profile information.
+          Review and update your verified CAREX account profile information.
         </p>
       </div>
 
-      {!account && (
-        <StageNotice
-          title="Local UI Preview Mode"
-          description="Sign in with Google to persist profile updates to your CAREX account. Without signing in, edits update this browser session only."
-          actionLabel="Sign In"
-          actionTo="/login"
-        />
-      )}
-
       <div className="grid gap-6 lg:grid-cols-12">
         <section className="rounded-xl border border-slate-800/90 bg-[#081124] p-6 sm:p-7 lg:col-span-7">
-          <h2 className="font-display text-lg font-semibold text-white">Profile Details</h2>
+          <div className="flex items-center gap-4 border-b border-slate-800/80 pb-5">
+            {account.photoUrl ? (
+              <img
+                src={account.photoUrl}
+                alt={`${account.displayName} profile`}
+                referrerPolicy="no-referrer"
+                className="h-12 w-12 rounded-full border border-slate-700 object-cover"
+              />
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-[#050b19] font-display text-base font-semibold text-sky-300">
+                {account.displayName.slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <h2 className="font-display text-lg font-semibold text-white">Profile Details</h2>
+              <p className="text-xs text-slate-400">
+                Verified identity linked via Google Authentication
+              </p>
+            </div>
+          </div>
+
           <form onSubmit={handleSave} noValidate className="mt-5 space-y-5">
             <div>
               <label htmlFor="profile-name" className="block text-sm font-medium text-slate-200">
@@ -98,11 +113,12 @@ export function ClientProfilePage() {
                 id="profile-name"
                 type="text"
                 value={form.displayName}
+                disabled={isReadOnly}
                 onChange={(e) => {
                   setForm((prev) => ({ ...prev, displayName: e.target.value }));
                   setSavedNotice(null);
                 }}
-                className="mt-2 w-full rounded-lg border border-slate-700/90 bg-[#050b19] px-4 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none"
+                className="mt-2 w-full rounded-lg border border-slate-700/90 bg-[#050b19] px-4 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               />
               {errors.displayName && (
                 <p role="alert" className="mt-1.5 text-xs text-rose-400">
@@ -113,26 +129,18 @@ export function ClientProfilePage() {
 
             <div>
               <label htmlFor="profile-email" className="block text-sm font-medium text-slate-200">
-                Contact Email
+                Verified Email Address
               </label>
               <input
                 id="profile-email"
                 type="email"
                 value={form.contactEmail}
-                readOnly={Boolean(account)}
-                onChange={(e) => {
-                  setForm((prev) => ({ ...prev, contactEmail: e.target.value }));
-                  setSavedNotice(null);
-                }}
-                className={`mt-2 w-full rounded-lg border border-slate-700/90 bg-[#050b19] px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none ${
-                  account ? 'text-slate-400 cursor-not-allowed' : 'text-white'
-                }`}
+                readOnly
+                className="mt-2 w-full cursor-not-allowed rounded-lg border border-slate-700/90 bg-[#050b19] px-4 py-2.5 text-sm text-slate-400 focus:outline-none"
               />
-              {errors.contactEmail && (
-                <p role="alert" className="mt-1.5 text-xs text-rose-400">
-                  {errors.contactEmail}
-                </p>
-              )}
+              <p className="mt-1.5 text-xs text-slate-500">
+                Email is synchronized directly from your verified Google account.
+              </p>
             </div>
 
             <div>
@@ -146,11 +154,12 @@ export function ClientProfilePage() {
                 id="profile-jurisdiction"
                 type="text"
                 value={form.jurisdiction}
+                disabled={isReadOnly}
                 onChange={(e) => {
                   setForm((prev) => ({ ...prev, jurisdiction: e.target.value }));
                   setSavedNotice(null);
                 }}
-                className="mt-2 w-full rounded-lg border border-slate-700/90 bg-[#050b19] px-4 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none"
+                className="mt-2 w-full rounded-lg border border-slate-700/90 bg-[#050b19] px-4 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               />
               {errors.jurisdiction && (
                 <p role="alert" className="mt-1.5 text-xs text-rose-400">
@@ -162,14 +171,14 @@ export function ClientProfilePage() {
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <button
                 type="submit"
-                disabled={saving}
-                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:opacity-60"
+                disabled={saving || isReadOnly}
+                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving
                   ? 'Saving...'
-                  : account
-                    ? 'Save Account Profile'
-                    : 'Save Preview Changes'}
+                  : isReadOnly
+                    ? 'Read-Only (Under Review)'
+                    : 'Save Account Profile'}
               </button>
               {savedNotice && (
                 <span role="status" className="text-sm font-medium text-cyan-300">
@@ -190,21 +199,24 @@ export function ClientProfilePage() {
           <div className="mt-4">
             <KeyValueRow
               label="Account Identifier"
-              value={account ? `CRX-${String(account.id).padStart(6, '0')}` : clientProfile.accountId}
+              value={`CRX-${String(account.id).padStart(6, '0')}`}
               mono
             />
+            <KeyValueRow label="Assigned Role" value={getRoleLabel(account.role)} />
             <div className="flex items-center justify-between border-b border-slate-800/70 py-3.5">
               <span className="text-sm text-slate-400">Account Status</span>
-              <StatusIndicator status={account?.accountStatus ?? clientProfile.accountStatus} />
+              <StatusIndicator status={getAccountStatusLabel(account.accountStatus)} />
             </div>
             <div className="flex items-center justify-between border-b border-slate-800/70 py-3.5">
               <span className="text-sm text-slate-400">Email Verification</span>
-              <StatusIndicator status={account ? 'Verified' : 'Pending'} />
+              <StatusIndicator status="Verified" />
             </div>
-            <div className="flex items-center justify-between py-3.5">
+            <div className="flex items-center justify-between border-b border-slate-800/70 py-3.5">
               <span className="text-sm text-slate-400">KYC Status</span>
-              <StatusIndicator status={account?.kycStatus ?? clientProfile.kycStatus} />
+              <StatusIndicator status={account.kycStatus} />
             </div>
+            <KeyValueRow label="Created" value={formatUtcTimestamp(account.createdAt)} mono />
+            <KeyValueRow label="Last Sign-In" value={formatUtcTimestamp(account.lastLoginAt)} mono />
           </div>
         </section>
       </div>

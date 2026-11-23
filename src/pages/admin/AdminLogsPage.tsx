@@ -1,37 +1,60 @@
 import React, { useState } from 'react';
-import { Search } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
 import { StatusIndicator } from '../../components/StatusIndicator';
-import { SegmentedTabs, StageNotice } from '../../components/UiPrimitives';
-import { INITIAL_ADMIN_LOGS } from '../../data/stage1Placeholders';
+import { SegmentedTabs } from '../../components/UiPrimitives';
+import { useAdminData } from '../../context/AdminDataContext';
 import { filterRecords } from '../../utils/validation';
 
+function formatUtcTimestamp(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toISOString().replace('T', ' ').slice(0, 19);
+}
+
 export function AdminLogsPage() {
+  const { activityLogs, loading, error, refreshOverview } = useAdminData();
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
   const filtered = filterRecords(
-    INITIAL_ADMIN_LOGS,
+    activityLogs,
     query,
-    ['eventId', 'actor', 'summary', 'category'],
+    ['eventCode', 'actorEmail', 'summary', 'category'],
     'category',
     categoryFilter
   );
 
   return (
     <div className="space-y-8">
-      <div className="space-y-2">
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-          Activity Logs
-        </h1>
-        <p className="text-sm text-slate-400">
-          Chronological audit trail of administrative operations, RBAC blocks, and account events.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-2">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+            Activity Logs
+          </h1>
+          <p className="text-sm text-slate-400">
+            Chronological audit trail of verified sign-ins, administrative status updates, and
+            blocked access attempts.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void refreshOverview()}
+          disabled={loading}
+          className="inline-flex items-center gap-2 self-start rounded-lg border border-slate-700/90 px-3.5 py-2 text-xs font-medium text-slate-200 transition-colors hover:border-slate-600 hover:text-white disabled:opacity-60 whitespace-nowrap"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <span>{loading ? 'Refreshing...' : 'Refresh Logs'}</span>
+        </button>
       </div>
 
-      <StageNotice
-        title="Stage 1 Placeholder Audit Log"
-        description="Entries below demonstrate the CAREX audit log structure using placeholder timestamps and CAREX status indicators."
-      />
+      {error && (
+        <div
+          role="alert"
+          className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-5 py-4 text-sm text-rose-300"
+        >
+          {error}
+        </div>
+      )}
 
       <div className="flex flex-col gap-4 rounded-xl border border-slate-800/90 bg-[#081124] p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:max-w-sm">
@@ -76,17 +99,25 @@ export function AdminLogsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/70">
-            {filtered.length > 0 ? (
+            {loading && activityLogs.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">
+                  Loading audit logs...
+                </td>
+              </tr>
+            ) : filtered.length > 0 ? (
               filtered.map((entry) => (
-                <tr key={entry.eventId} className="hover:bg-slate-800/35">
+                <tr key={entry.id} className="hover:bg-slate-800/35">
                   <td className="px-4 py-3.5 font-mono text-xs tabular-nums text-slate-400">
-                    {entry.eventId}
+                    {entry.eventCode}
                   </td>
                   <td className="px-4 py-3.5 font-mono text-xs tabular-nums text-slate-300">
-                    {entry.timestampUtc}
+                    {formatUtcTimestamp(entry.createdAt)}
                   </td>
                   <td className="px-4 py-3.5 text-xs text-sky-400">{entry.category}</td>
-                  <td className="px-4 py-3.5 font-mono text-xs text-slate-400">{entry.actor}</td>
+                  <td className="px-4 py-3.5 font-mono text-xs text-slate-400">
+                    {entry.actorEmail}
+                  </td>
                   <td className="px-4 py-3.5 text-xs text-slate-200">{entry.summary}</td>
                   <td className="px-4 py-3.5 text-right">
                     <StatusIndicator status={entry.outcome} />
@@ -96,7 +127,7 @@ export function AdminLogsPage() {
             ) : (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">
-                  No placeholder activity logs match the active search or category filter.
+                  No recorded activity logs match the active search or category filter.
                 </td>
               </tr>
             )}

@@ -1,34 +1,81 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, RefreshCw } from 'lucide-react';
 import { AppLink } from '../../components/AppLink';
 import { StatusIndicator } from '../../components/StatusIndicator';
-import { StageNotice } from '../../components/UiPrimitives';
-import {
-  ADMIN_SUMMARY_PLACEHOLDERS,
-  INITIAL_ADMIN_LOGS,
-} from '../../data/stage1Placeholders';
+import { useAdminData } from '../../context/AdminDataContext';
+
+function formatUtcTimestamp(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toISOString().replace('T', ' ').slice(0, 19);
+}
 
 export function AdminDashboardPage() {
+  const { overview, activityLogs, loading, error, refreshOverview } = useAdminData();
+
+  const metrics = [
+    {
+      label: 'Total Registered Users',
+      value: overview ? String(overview.metrics.totalUsers) : '—',
+      note: 'Verified Google accounts',
+    },
+    {
+      label: 'Active Users',
+      value: overview ? String(overview.metrics.activeUsers) : '—',
+      note: 'Full portal access',
+    },
+    {
+      label: 'Under Review',
+      value: overview ? String(overview.metrics.underReviewUsers) : '—',
+      note: 'Read-only policy',
+    },
+    {
+      label: 'Restricted Accounts',
+      value: overview ? String(overview.metrics.restrictedUsers) : '—',
+      note: 'Blocked server-side',
+    },
+    {
+      label: 'Administrators',
+      value: overview ? String(overview.metrics.adminUsers) : '—',
+      note: 'Verified ADMIN role',
+    },
+  ];
+
   return (
     <div className="space-y-8">
-      <div className="space-y-2">
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-          Admin Dashboard
-        </h1>
-        <p className="text-sm text-slate-400">
-          Administrative overview of platform accounts, KYC queues, wallet verification records,
-          and system activity monitoring.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-2">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+            Admin Dashboard
+          </h1>
+          <p className="text-sm text-slate-400">
+            Live administrative overview of authenticated CAREX accounts, status governance, and
+            security activity logs.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void refreshOverview()}
+          disabled={loading}
+          className="inline-flex items-center gap-2 self-start rounded-lg border border-slate-700/90 px-3.5 py-2 text-xs font-medium text-slate-200 transition-colors hover:border-slate-600 hover:text-white disabled:opacity-60 whitespace-nowrap"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <span>{loading ? 'Refreshing...' : 'Refresh Data'}</span>
+        </button>
       </div>
 
-      <StageNotice
-        title="Placeholder Data Active — Administrative Layout Preview"
-        description="All figures and log entries displayed below are clearly labelled Stage 1 placeholder data for interface verification."
-      />
+      {error && (
+        <div
+          role="alert"
+          className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-5 py-4 text-sm text-rose-300"
+        >
+          {error}
+        </div>
+      )}
 
-      {/* 5 Core Administrative Metrics (Tabular Numerals) */}
+      {/* 5 Live Administrative Metrics (Tabular Numerals) */}
       <section aria-label="Administrative summary metrics" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {ADMIN_SUMMARY_PLACEHOLDERS.map((metric) => (
+        {metrics.map((metric) => (
           <div
             key={metric.label}
             className="rounded-xl border border-slate-800/90 bg-[#081124] p-5"
@@ -49,8 +96,7 @@ export function AdminDashboardPage() {
             <p className="text-xs text-sky-400">Compliance Queue</p>
             <h2 className="mt-1 font-display text-lg font-semibold text-white">KYC Management</h2>
             <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              Review pending, verified, and rejected placeholder KYC submissions across authorized
-              provider channels.
+              Review upcoming KYC submission workflows across authorized provider channels.
             </p>
           </div>
           <AppLink
@@ -69,8 +115,8 @@ export function AdminDashboardPage() {
               Account Restrictions
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              Inspect user roles, manage account restriction states, and review administrative
-              access policies.
+              Inspect verified user roles and manage ACTIVE, UNDER_REVIEW, and RESTRICTED states
+              server-side.
             </p>
           </div>
           <AppLink
@@ -89,7 +135,7 @@ export function AdminDashboardPage() {
               Wallet Management
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              Audit placeholder public wallet links and cryptographic signature verification states.
+              Inspect scheduled public wallet links and cryptographic signature verification layout.
             </p>
           </div>
           <AppLink
@@ -102,15 +148,15 @@ export function AdminDashboardPage() {
         </div>
       </section>
 
-      {/* Recent Placeholder Activity Preview */}
+      {/* Live Recent Activity Monitoring */}
       <section className="rounded-xl border border-slate-800/90 bg-[#081124] p-6">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="font-display text-lg font-semibold text-white">
-              Recent Activity Monitoring (Placeholder)
+              Recent Activity Monitoring
             </h2>
             <p className="mt-0.5 text-xs text-slate-400">
-              Illustrative audit log layout with CAREX status indicators.
+              Recorded authentication, governance, and access-control audit events.
             </p>
           </div>
           <AppLink
@@ -132,18 +178,32 @@ export function AdminDashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/70">
-              {INITIAL_ADMIN_LOGS.slice(0, 4).map((entry) => (
-                <tr key={entry.eventId} className="hover:bg-slate-800/30">
-                  <td className="py-3 pr-4 font-mono text-xs tabular-nums text-slate-400">
-                    {entry.timestampUtc}
-                  </td>
-                  <td className="py-3 pr-4 text-xs text-slate-300">{entry.category}</td>
-                  <td className="py-3 pr-4 text-xs text-slate-200">{entry.summary}</td>
-                  <td className="py-3 text-right">
-                    <StatusIndicator status={entry.outcome} />
+              {loading && activityLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-8 text-center text-sm text-slate-400">
+                    Loading activity records...
                   </td>
                 </tr>
-              ))}
+              ) : activityLogs.length > 0 ? (
+                activityLogs.slice(0, 6).map((entry) => (
+                  <tr key={entry.id} className="hover:bg-slate-800/30">
+                    <td className="py-3 pr-4 font-mono text-xs tabular-nums text-slate-400">
+                      {formatUtcTimestamp(entry.createdAt)}
+                    </td>
+                    <td className="py-3 pr-4 text-xs text-slate-300">{entry.category}</td>
+                    <td className="py-3 pr-4 text-xs text-slate-200">{entry.summary}</td>
+                    <td className="py-3 text-right">
+                      <StatusIndicator status={entry.outcome} />
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="py-8 text-center text-sm text-slate-400">
+                    No activity logs recorded yet.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

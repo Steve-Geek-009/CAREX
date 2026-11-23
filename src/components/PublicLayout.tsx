@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Menu, X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useRouter } from '../context/RouterContext';
 import { PUBLIC_PRIMARY_NAV_PATHS, ROUTES } from '../utils/routing';
 import { AppLink } from './AppLink';
@@ -7,11 +8,14 @@ import { CarexLogo } from './CarexLogo';
 
 export function PublicLayout({ children }: { children: React.ReactNode }) {
   const { currentPath } = useRouter();
+  const { account } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const primaryNavLinks = PUBLIC_PRIMARY_NAV_PATHS.map(
     (path) => ROUTES.find((r) => r.path === path)!
   );
+
+  const isAdmin = account?.role === 'ADMIN' && account?.accountStatus === 'ACTIVE';
 
   return (
     <div className="flex min-h-screen flex-col bg-[#040814] text-slate-100">
@@ -52,10 +56,10 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
           {/* Zone 3: 1 primary action on desktop + mobile toggle */}
           <div className="flex items-center gap-3 shrink-0">
             <AppLink
-              to="/login"
+              to={account ? '/client' : '/login'}
               className="hidden rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 whitespace-nowrap shrink-0 lg:inline-flex"
             >
-              Sign In
+              {account ? 'Client Portal' : 'Sign In'}
             </AppLink>
             <button
               type="button"
@@ -104,35 +108,18 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-800/80 pt-4">
               <AppLink
-                to="/login"
+                to={account ? '/client' : '/login'}
                 onClick={() => setMobileMenuOpen(false)}
                 className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-500 whitespace-nowrap"
               >
-                Sign In
+                {account ? 'Client Portal' : 'Sign In'}
               </AppLink>
               <AppLink
-                to="/register"
+                to={isAdmin ? '/admin' : '/register'}
                 onClick={() => setMobileMenuOpen(false)}
                 className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-200 hover:border-slate-600 hover:text-white whitespace-nowrap"
               >
-                Register
-              </AppLink>
-            </div>
-            <div className="mt-4 flex flex-col gap-1 border-t border-slate-800/80 pt-4">
-              <span className="px-3 text-xs font-medium text-slate-500">Stage 1 Portal Layouts</span>
-              <AppLink
-                to="/client"
-                onClick={() => setMobileMenuOpen(false)}
-                className="rounded-lg px-3 py-2 text-sm text-sky-300 hover:bg-slate-800/50"
-              >
-                Client Portal Preview
-              </AppLink>
-              <AppLink
-                to="/admin"
-                onClick={() => setMobileMenuOpen(false)}
-                className="rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/50"
-              >
-                Admin Console Preview
+                {isAdmin ? 'Admin Console' : 'Register'}
               </AppLink>
             </div>
           </nav>
@@ -151,8 +138,8 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
                 POWERING THE NEXT GENERATION
               </p>
               <p className="max-w-xs text-sm leading-relaxed text-slate-400">
-                CAREX (CRX) Web Platform — Stage 1 corporate website, architecture overview, and
-                modular portal layouts.
+                CAREX (CRX) Web Platform — Corporate website, verified Google authentication, and
+                modular portal architecture.
               </p>
             </div>
 
@@ -197,7 +184,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
                 </li>
                 <li>
                   <AppLink to="/login" className="transition-colors hover:text-white">
-                    Login
+                    Sign In
                   </AppLink>
                 </li>
                 <li>
@@ -209,7 +196,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-white">Portal Layouts (Stage 1)</p>
+              <p className="text-sm font-semibold text-white">Account Portals</p>
               <ul className="space-y-2.5 text-sm text-slate-400">
                 <li>
                   <AppLink to="/client" className="transition-colors hover:text-white">
@@ -218,25 +205,27 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
                 </li>
                 <li>
                   <AppLink to="/client/kyc" className="transition-colors hover:text-white">
-                    Client KYC Verification
+                    KYC Verification
                   </AppLink>
                 </li>
                 <li>
-                  <AppLink to="/admin" className="transition-colors hover:text-white">
-                    Admin Dashboard
+                  <AppLink to="/client/wallet" className="transition-colors hover:text-white">
+                    Wallet Management
                   </AppLink>
                 </li>
-                <li>
-                  <AppLink to="/admin/logs" className="transition-colors hover:text-white">
-                    Admin Activity Logs
-                  </AppLink>
-                </li>
+                {isAdmin && (
+                  <li>
+                    <AppLink to="/admin" className="transition-colors hover:text-white">
+                      Admin Console
+                    </AppLink>
+                  </li>
+                )}
               </ul>
             </div>
           </div>
 
           <div className="mt-12 flex flex-col gap-3 border-t border-slate-800/80 pt-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <p>© {new Date().getFullYear()} CAREX (CRX). Stage 1 Web Platform Architecture.</p>
+            <p>© {new Date().getFullYear()} CAREX (CRX). Web Platform Architecture.</p>
             <p>
               Blockchain protocol, tokenomics, and business specifications are governed separately.
             </p>
